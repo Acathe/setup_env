@@ -41,10 +41,8 @@ install_settings() {
 
 install_plugin() {
     claude plugin marketplace add 'anthropics/claude-plugins-official'
-    claude plugin install 'claude-code-setup@claude-plugins-official'
     claude plugin install 'claude-md-management@claude-plugins-official'
     claude plugin install 'claude-security@claude-plugins-official'
-    claude plugin install 'hookify@claude-plugins-official'
 
     if [[ $APP_GIT == '1' ]]; then
         claude plugin install 'commit-commands@claude-plugins-official'
