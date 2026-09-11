@@ -203,7 +203,9 @@ OMZ 无人值守仅改登录 shell、不启动；预期 `docker exec` 进交互 
 
 ### copilot-api-config
 
-一次性容器修改共享目录的有效 `config.json`，实现见 `container/copilot-api-config/`。固定顺序：API key 清空 → 随机追加 → 固定追加 → 模型映射；前步失败中止，已写入不回滚。映射仅 key／value 均非空时按键覆盖，保留其他配置、不验模型。
+一次性容器修改共享目录的有效 `config.json`，实现见 `container/copilot-api-config/`。固定顺序：API key 清空 → 随机追加 → 固定追加 → 模型映射 → 小模型；前步失败中止，已写入不回滚。映射仅 key／value 均非空时按键覆盖，保留其他配置、不验模型。
+
+`--small-model` 仅非空时统一覆盖 `smallModel`／`alphaSearchModel`／`messageApiWebSearchModel`；`extraPrompts`／`modelReasoningEfforts` 仅在 `gpt-5-mini` 源键存在且目标模型键缺失时复制其值，保留目标已有设置、源键及其他配置。上游会补回缺失的源键，它们仅为按模型索引的设置、不触发模型调用。空值不改配置，不初始化配置、不验证模型能力、不重启服务。
 
 重复值取末值，模型映射取最后一组完整值；API key 不去重。`<N>` 未验格式／上限即进入 Bash 算术，只限可信调用方的规范非负十进制。固定 key 经宿主 argv／Docker 环境变量，可暴露于 history、进程及 metadata，不是秘密通道。
 
