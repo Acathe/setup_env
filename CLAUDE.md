@@ -2,27 +2,27 @@
 
 ## 适用范围、事实源与文档边界
 
-仅面向全新、明确的 macOS／Debian／仓库容器环境，不扩展旧环境或非目标平台兼容；保留 Bash 3.2 等明示约束。Bash 脚本＋静态制品，无统一构建／测试套件；容器流程构建 Docker 镜像。
+仅支持全新、明确的 macOS／Debian／仓库容器环境，不扩展旧环境或非目标平台。Bash＋静态制品，无统一构建／测试套件。
 
-dispatcher、叶脚本、制品是参数／安装／配置事实源；本文仅记跨文件契约、所有权、失败与安全边界。README 只放调用／参数；现有手装 VS Code 扩展、未排除 `--app-claude-auth-token` 的 dev-container `(debian-flag)` 是已知偏差，非接口／安全先例。
+事实源为 dispatcher／叶脚本／制品；README 仅调用／参数，本文仅跨文件契约、所有权、失败与安全边界。README 手装 VS Code 扩展、dev-container `(debian-flag)` 未排除 `--app-claude-auth-token` 是已知偏差，不作先例。
 
 ## 架构、入口与分发器契约
 
-- 根 `main.sh` 仅消费 `--setup`（默认 `macos`），浅克隆默认分支后分发 `<setup>/main.sh`；bootstrap URL 固定 `master`，payload 可能异分支，克隆不清理。仅此入口在 `curl | bash` 中无条件执行，无 `BASH_SOURCE` 保护。
-- `macos/` 是终端客户端／跳板机，不配开发环境、Git 或 classic CLI；根入口缺 Command Line Tools 目录时只触发 `xcode-select --install`，不等待／验证。
-- `debian/` 是开发环境，基线为 Homebrew → Zsh → OMZ → Starship → classic CLI，其余可选。Debian／container 缺 Git 时由根入口经 APT 安装。
-- `container/main.sh` 消费 `--image`（默认 `dev-container`），直接执行 `./$IMAGE/main.sh`，无 allowlist；公开目标为 `dev-container`、`copilot-api`、一次性 `copilot-api-config`。
+- 根 `main.sh` 仅消费 `--setup`，浅克隆默认分支再分发；bootstrap 固定 `master`，payload 可异分支，克隆不清理。仅根无 `BASH_SOURCE` 保护，供 `curl | bash` 无条件执行。
+- `macos/` 仅客户端／跳板机，不配开发环境／Git／classic CLI；根按目录判断 Command Line Tools，缺则触发 `xcode-select --install`，不等待／验证。
+- `debian/` 基线为 Homebrew → Zsh → OMZ → Starship → classic CLI，其余可选；根为 Debian／container 经 APT 补 Git。
+- `container/main.sh` 仅消费 `--image`，直接执行目标，无 allowlist。
 
-无平台前缀的路径相对于各平台树。Debian 首装 Homebrew 用 APT 补依赖；根不消费 `--unattended`：Homebrew 设 `NONINTERACTIVE=1`，OMZ 透传并以 `sudo -n` 改登录 shell。安装子进程 PATH 由父脚本求值 `/home/linuxbrew/.linuxbrew/bin/brew shellenv bash` 提供；交互式 PATH 归 OMZ `brew`，不写 `.zshenv`。
+无平台前缀的路径相对于平台树。Debian 首装 Homebrew 用 APT 补依赖；`--unattended` 根不消费，Homebrew 设 `NONINTERACTIVE=1`，OMZ 透传并 `sudo -n` 改登录 shell。安装 PATH 由 dispatcher 求值 `brew shellenv bash` 提供，交互 PATH 归 OMZ `brew`，不写 `.zshenv`。
 
 parser／接口契约：
 
-1. 以可覆盖默认值初始化并导出标志，逐 token 扫描；值参数用 `numOfArgs` 保护 `$2`，缺值保留当前值。未知项经 `POSITIONAL` 下传，最终无人消费的项静默忽略。
-2. 无 `--` 终止或 option/value 成组；下层值等于祖先标志（`--setup`／`--image`）时会被祖先消费。
-3. 基线按依赖顺序，可选组件按 command → code → app、组内字母序执行；导出、parser、`main()` 保护、README 表须同序同步。可选组件须自行安装／保护依赖，除明确集成外不依赖另一可选标志；container target 例外。
-4. Debian `APP_VSCODE`／`APP_GHOSTTY` 只有导出、parser、README，无 app 叶脚本／空保护。VS Code 插件和 `02-vscode.zsh` 归 OMZ，仅在 VS Code 内选 `code -w`，不设 `VISUAL`；`debian/vscode/` 仅参考。Ghostty 只显式集成，不探测终端、不装应用、不自动启用 SSH／Claude／tmux。
+1. 导出可覆盖默认值，逐 token 扫描；值参数以 `numOfArgs` 保护 `$2`，缺值保留当前值。未知项经 `POSITIONAL` 下传，最终静默忽略。
+2. 无 `--` 终止或 option/value 成组；下层值若等于祖先标志（`--setup`／`--image`），会被祖先消费。
+3. 基线按依赖；可选按 command → code → app、组内字母序，导出／parser／`main()` 保护／README 表同序同步。除明确集成／container target，可选组件须自行安装／保护依赖。
+4. Debian `APP_VSCODE`／`APP_GHOSTTY` 仅集成开关，无 app 叶脚本／空保护。VS Code 插件／编辑器归 OMZ，仅 VS Code 内选 `code -w`，不设 `VISUAL`；`debian/vscode/` 仅参考。Ghostty 不装应用、不探测终端、不自动启用 SSH／Claude／tmux。
 
-可选集成须双方启用；基线可按标志选择配置。读取关系如下（列组件名，对应导出标志见 dispatcher）：
+可选集成须双方启用；基线可按标志配置。读取关系（标志名见 dispatcher）：
 
 | 消费者 | 读取的组件标志 |
 | --- | --- |
@@ -34,7 +34,7 @@ parser／接口契约：
 | Yazi | modern CLI、Markdown |
 | Debian classic CLI | modern CLI |
 
-用 `bash` 调用，不依赖可执行位。根／macOS 兼容 Bash 3.2，Debian／容器可用新版；除根外均须可 source 并保留 `BASH_SOURCE` 末尾保护，无参数叶脚本不加 parser／`POSITIONAL`。根／macOS 的空数组恢复不可换成 Debian 的 `"${POSITIONAL[@]}"`（3.2＋`set -u` 可能拒绝空数组）：
+用 `bash` 调用，不依赖可执行位；根／macOS 兼容 Bash 3.2，Debian／容器可用新版。除根外可 source、有末尾 `BASH_SOURCE` 保护；无参数叶脚本不加 parser／`POSITIONAL`。根／macOS 保留以下空数组恢复（3.2＋`set -u` 不保证支持直接 `"${POSITIONAL[@]}"`）：
 
 ```bash
 set -- "${POSITIONAL[@]+"${POSITIONAL[@]}"}"
@@ -93,136 +93,124 @@ macOS SSH 仅用一次性 HOME 和 `ssh-keygen`／`ssh-copy-id` 桩，覆盖首�
 
 ## 配置所有权、落点与重复运行
 
-安装与非 shell 配置归组件，shell 配置归 OMZ；仅 modern CLI 补全链接、copilot-api 服务启动后的 `98-copilot-api.zsh` 例外。`.zshrc` 多写入器协作，其余片段单一所有者。
+安装／非 shell 配置归组件，shell 配置归 OMZ；仅 modern CLI 补全链接、服务启动后安装的 `98-copilot-api.zsh` 例外。`.zshrc` 多写入器协作，其余片段单一所有者。
 
-两平台 OMZ 准备模板（Debian 另启用户 bin PATH），依次运行 `install_plugin.sh`（第三方 clone／仓库插件）、`update.sh`（聚合 updater 及平台片段）、`plugin.sh`（仅插件数组，条件插件须本次前置物化）、`custom.sh`（平台 `command/omz/custom/` 静态制品，保留 basename）。
+OMZ 从模板建 `.zshrc`（Debian 另启用户 bin PATH），依次执行 `install_plugin.sh` → `update.sh` → `plugin.sh` → `custom.sh`；职责见两平台 `command/omz/`。`plugin.sh` 仅重建插件数组，条件插件须本次前置物化。
 
-落点（插件／片段相对于 `$ZSH_CUSTOM`）：
+`compinit`／库／插件数组归 `.zshrc`；加载前设置用插件，之后用编号 custom（保留 basename／字典序，正文不重复标题）。Starship 外观单独管理，不写 `.zshrc`。
 
-| 内容 | 落点 |
-| --- | --- |
-| `compinit`、OMZ 库、插件数组 | `.zshrc` |
-| Starship 外观 | `$HOME/.config/starship.toml` |
-| eza source 前的 zstyle／Rust source 前的代理 PATH | `plugins/pre-eza/`／`plugins/brew-rustup/` |
-| Go 的 `$HOME/go/bin`／Protobuf 的 keg-only `clang-format` PATH | `03-go.zsh`／`04-clang-format.zsh` |
-| 别名、集成函数、`compdef`、运行时变量、编辑器 | `<custom basename>` |
-| 聚合更新函数与片段 | `plugins/update-all-in-one/` |
-| 一次性 GitHub CLI 登录 | `99-gh-login.zsh` |
+静态部署须注明整文件／键级／追加／patch 所有权：`install -m 644`（Debian 可 `-D`，macOS 先 `mkdir -p`），插件目录 `cp -R`；Ruff 外部 `main` 下载例外。
 
-加载前设置用插件，加载后用编号 custom（字典序，正文不重复标题）。默认部署静态制品，注明整文件／键级／追加／patch 所有权；通常 `install -m 644`，Debian 可 `-D`，macOS 先 `mkdir -p`，OMZ 插件目录用 `cp -R`；Ruff 从外部 `main` 下载例外。
+Debian Python 项目运行时归 uv，系统 `python3` 为基线；不另装 Homebrew Python／设 `PYTHON_AUTO_VRUN`。
 
-Debian Python：Linuxbrew 装 `uv`，`uv tool` 隔离 `py-spy`；项目运行时归 uv，系统 `python3` 为基线，不另装 Homebrew Python／设 `PYTHON_AUTO_VRUN`。
+**重跑：** 只覆盖所选制品，关标志不卸载／清理。插件数组从 `plugins=(aliases)` 重建，残留插件不启用，但旧 custom／updater 仍可执行，改名可能重复运行。固定 clone 非幂等；Starship 不用 `--force`、已有目标即失败；Yazi 见下文。
 
-**重跑：** 仅覆盖所选制品，未选项／旧副本／basename 留存；关标志不卸载，清理须显式。插件数组从 `plugins=(aliases)` 重建，残留插件不启用；custom／updater 仍可能执行，改名可能重复运行。固定 clone 目录不幂等；Starship 不用 `--force`、目标已有即失败；Yazi 另见 package 契约。
+Debian 仅 `APP_GIT=1` 装 `99-gh-login.zsh`（最后一个受管 custom）；source 先自删再 `gh auth login`，失败／取消不重试。`custom.sh` 重跑可重装，关标志后的残留仍可触发。
 
-Debian `APP_GIT=1` 才装 `99-gh-login.zsh`；source 先删自身再直接 `gh auth login`，失败／取消不重试。`custom.sh` 重跑可重装；关标志后的未执行残留仍可登录一次。
+`update.sh` 先于可选安装，按基线／Debian 标志部署，不探测命令；失败可留未满足的命令引用。聚合插件 source 只定义函数，调用才按字典序 source 片段；多步用 `&&`，运行器不查逐项返回值，后续成功可掩盖失败。`98-copilot-api.zsh` 从 `master` 调根入口，在末尾 `99-oh-my-zsh.zsh` 前。
 
-两平台 `update.sh` 装基础片段，Debian 按标志增选，均不探测命令；早于可选安装，失败可留引用未装命令的片段。聚合插件 source 仅定义函数，调用才按字典序 source `custom/*.zsh`；`98-copilot-api.zsh` 从 `master` 调根入口，排在末尾 `99-oh-my-zsh.zsh` 的 `omz update` 前。片段多步用 `&&`；运行器不查逐项返回值，后续成功可掩盖失败。
-
-APT／Homebrew 各管自身安装工具的更新，其他 updater 见 `debian/command/omz/plugins/update-all-in-one/custom/`。Go 无专用 updater，不扫描 `$GOBIN`／`$GOPATH/bin`、不更新 `gopls`。`ohmyzsh-full-autoupdate` 仅在 shell 初始化更新带实体 `.git` 的 custom 插件／主题；聚合 updater 不重复扫描、不调其私有实现／改 `.zsh-update`，只共享官方 `omz update`。
+APT／Homebrew 各更新自身工具，其他 updater 见 `debian/command/omz/plugins/update-all-in-one/custom/`。Go 无专用 updater，不扫描 Go bin／更新 `gopls`。`ohmyzsh-full-autoupdate` 仅初始化时更新带实体 `.git` 的 custom 插件／主题；聚合更新不重复扫描、不调私有实现／改 `.zsh-update`，仅共享 `omz update`。
 
 ## Shell、OMZ、补全与编辑器
 
 OMZ 加载顺序：补全／库 → `plugins=()` → 字典序 `$ZSH_CUSTOM/*.zsh` → 主题。必须保持：
 
-- `pre-eza` 紧邻 `eza` 前，使 source 时读取的 zstyle 生效。
-- `update-all-in-one` → `ohmyzsh-full-autoupdate` → 第三方 clone 插件，后者由 autoupdate 同步。
-- `fzf-tab` 早于 fzf、autosuggestions、syntax-highlighting 等包装器；五字段 `:completion:*:*:*:*:*` 的 `menu no` 须压过 OMZ 默认值。`zsh-syntax-highlighting` 必须是最后一个插件以免 Tab 嵌套；brackets highlighter 在其后的 custom 中追加。
-- `brew` 紧跟 `aliases` 且早于 `starship`；官方 Starship 插件清 `ZSH_THEME` 并初始化，不再调用 `starship init`。
-- Atuin 从 `09-atuin.zsh` 在插件后初始化，以便在 fzf 后接管 Ctrl-R／Up，不得前移。
-- Rust 为 `brew → brew-rustup → rust`，source 时须能发现 cargo；Claude 不重加 `$HOME/.cargo/bin`。
-- modern CLI 用 `zoxide`（仅由 OMZ 初始化一次）而非 `z`；未启用时用 `z` 并部署其设置。`99-gh-login.zsh` 是最后一个受管理 custom。
+- `pre-eza` 紧邻 `eza` 前，使 source 时的 zstyle 生效。
+- `update-all-in-one` → `ohmyzsh-full-autoupdate` → 第三方 clone 插件。
+- `fzf-tab` 早于 fzf／autosuggestions／syntax-highlighting 等包装器；五字段 `:completion:*:*:*:*:*` 的 `menu no` 压过 OMZ 默认。`zsh-syntax-highlighting` 须为最后一个插件以免 Tab 嵌套；brackets highlighter 随后在 custom 追加。
+- `brew` 紧跟 `aliases`、早于 `starship`；只由官方 Starship 插件清 `ZSH_THEME` 并初始化，不重复 `starship init`。
+- Atuin 由 `09-atuin.zsh` 在插件后初始化，在 fzf 后接管 Ctrl-R／Up，不得前移。
+- Rust 保持 `brew → brew-rustup → rust`，source 时可发现 cargo；Claude 不重加 `$HOME/.cargo/bin`。
+- modern CLI 用 `zoxide`，仅由 OMZ 初始化一次；否则用 `z` 并部署其设置。
 
-禁用 `\<z\>` 删插件名，会误匹配 `fancy-ctrl-z` 并粘连相邻名称；须以空格／括号界定。macOS 用 BSD `sed -i ''`，Debian 用 GNU `sed -i`。
+删插件名须以空格／括号界定，禁用会误匹配 `fancy-ctrl-z` 并粘连名称的 `\<z\>`。macOS 用 BSD `sed -i ''`，Debian 用 GNU `sed -i`。
 
-脚本用 `#!/usr/bin/env bash`、`set -euo pipefail`；`debian/command/classic_cli/nanom` 是 POSIX 例外，以 `#!/bin/sh` 和 `exec /usr/bin/nano -/ "$@"` 替换自身。字面量单引号，需展开才用双引号；`${VAR:-default}` 默认值不加字面引号。
+Bash 用 `#!/usr/bin/env bash`／`set -euo pipefail`，仅 `nanom` 为 POSIX sh。字面量单引号，需展开才双引号；`${VAR:-default}` 默认值不加字面引号。
 
-直接编辑静态 `.zsh`，保留 source 时展开的 `$PATH`／`$HOME`／`$EDITOR` 和 fzf 占位符；预览嵌套引号影响分词，保留 `-- {}` 防止候选被当作选项。
+直接编辑静态 `.zsh`，保留 source 时展开的 `$PATH`／`$HOME`／`$EDITOR`、fzf 占位符与分词所需的嵌套引号；候选前保留 `-- {}`。
 
-末尾 false 的 `[[ ... ]] && command` 会让函数返回 1 并触发 `set -e`，用 `if`／`return 0`。模板 patch 须验标记与结果（`sed` 无匹配仍成功），`ln -sf` 前须验证来源。未由本组件／明确前置保证的命令先 `command -v`。两平台 Homebrew／OMZ 的“命令替换下载后执行”可能将下载失败变成成功的空脚本，不把 strict mode 当作此处的致命保证。
+函数末尾 false 的 `[[ ... ]] && command` 会触发 `set -e`，改用 `if`／`return 0`。模板 patch 验标记及结果（`sed` 无匹配仍成功）；`ln -sf` 前验来源；无明确依赖保证的命令先 `command -v`。Homebrew／OMZ 的“命令替换下载后执行”可能将下载失败变成成功的空脚本，strict mode 不保证此处致命失败。
 
-`compinit` 仅发现 `_*`，依首个 `#compdef` 注册，改链接名不改声明。OMZ 在 `compinit` 前加 custom completions，`brew` 更晚才加 Homebrew `site-functions`；modern CLI 须以动态 `brew --prefix` 提前建 `$ZSH_CUSTOM/completions` 链接，逐一验证来源，失败不回滚。禁止硬编码 Linuxbrew／Cellar 或建悬空链接。
+`compinit` 仅发现 `_*`，按首个 `#compdef` 注册，改链接名不改声明。OMZ 在 `compinit` 前加 custom completions，`brew` 更晚才加 Homebrew `site-functions`；modern CLI 须用动态 `brew --prefix` 提前建 `$ZSH_CUSTOM/completions` 链接，逐一验来源，失败不回滚。禁硬编码 Linuxbrew／Cellar 或建悬空链接。
 
-受管配置用实际安装版本验证，不以 master 代替：Lazygit／Micro 可静默忽略未知键或迁移文件，bat／fzf／delta 未知选项会失败。Micro 真彩色仅设 `micro.settings.json` 的 `"truecolor": "on"`，不设 `MICRO_TRUECOLOR`；不设覆盖 bat 配置的 `BAT_THEME`。
+受管配置须用实际安装版验证，不以 master 代替（未知键可被静默忽略）；Micro 真彩色／bat 主题归静态配置，不设 `MICRO_TRUECOLOR`／`BAT_THEME`。
 
 ## 组件特有契约
 
 ### Classic 与 modern CLI
 
-Classic 不装软件；Less 总部署，Nano 配置／`nanom` 仅非 modern，不 alias `nano`。modern 清单见 `debian/command/modern_cli/main.sh`。Nano 用系统 nanorc 语法，不加重复 include、改内容或冲突终端选择的设置；`minibar` 需 5.5+，`nanom` 的 `-/` 需 8.0+。classic=`00-nano.zsh`，modern=`01-micro.zsh`；切回 classic 须删旧 Micro 片段。macOS 不管 Nano。
+Classic 不装软件：Less 总部署，Nano／`nanom` 仅非 modern；不 alias `nano`、重复 include、改系统 nanorc 语法或终端选择。`minibar` ≥5.5，`nanom -/` ≥8.0。切回 classic 须删旧 `01-micro.zsh`，否则覆盖 `00-nano.zsh`。
 
-Atuin 无历史／账户／同步导入；fzf 的 Ctrl-T／Alt-C 命令和预览归 shell 片段，两者无仓库原生配置。tealdeer 不预热，仅 updater 跑 `tldr -uq`，不吞失败；Glow 配置归 Markdown。
+Atuin 不导入历史／账户／同步；fzf 的 Ctrl-T／Alt-C 命令与预览归 shell 片段，两者无仓库原生配置。tealdeer 仅 updater 跑 `tldr -uq`，不预热、不吞单片段失败；Glow 归 Markdown。
 
 ### Yazi
 
-modern CLI／Markdown previewer 须前序组件已供命令；渲染见 `debian/app/yazi/yazi.toml.sh` 及其模板，按安装版验证。
-
-`ya pkg add` 全成功才写配置：失败则新 home 无配置，旧 home 留旧配置，已加插件不回滚。`yazi.toml` 全量渲染，`init.lua`／`keymap.toml` 静态部署；`package.toml` 归 `ya`，重复 add 拒绝，换源先 delete，不垃圾回收插件。
+previewer 依赖前序 modern CLI／Markdown。包全装成功后才全量写受管配置（见 `debian/app/yazi/main.sh`），失败留旧配置、已加包不回滚。`package.toml` 归 `ya`；重复 add 拒绝，换源先 delete，不垃圾回收。
 
 ### tmux 与 Ghostty
 
-每次执行上游未固定的 `master/install.sh`，patch 后按 `APP_CLAUDE`／`APP_GHOSTTY` 独立追加片段；均开则 Claude → Ghostty，无查重。Claude 管通用 passthrough／extended keys／`xterm*` extkeys，Ghostty 仅 `xterm-ghostty` terminal features。上游重建前将活动配置作时间戳备份；正常重跑不累积活动区块，但留备份，行为随上游。
+每次执行未固定的上游 `master/install.sh`，备份／重建随上游；本仓库 patch 后按标志独立、无查重追加 Claude → Ghostty。两份片段分别管理通用键盘／passthrough、Ghostty terminal features，见 `debian/app/tmux/`。
 
 Micro 仅内部剪贴板；tmux 不设 `set-clipboard`／`get-clipboard`，Ghostty 不放宽 `clipboard-read`，无三者系统剪贴板联动。
 
 ### Debian SSH
 
-`--command-ssh` 默认关；与 `--app-ghostty` 均启用才由 SSH 部署 `90-ghostty-env.conf`。不装／重载服务，生效靠 sshd 加载；关标志不移除 drop-in。
+SSH 与 Ghostty 同开时部署 `90-ghostty-env.conf`；不安装／重载 sshd。
 
 ### macOS SSH
 
-私钥已有只跳过 `ssh-keygen`，仍无查重追加 `Host`。指定 identity 且未传 `--command-ssh-no-copy-key` 时仍调用 `ssh-copy-id`，此时若已有私钥缺 `.pub`，会在追加后失败。no-copy 仅关远端复制，不阻止追加，整体不幂等。
+已有私钥只跳过生成，仍无查重追加 `Host`；指定 identity 且未禁复制时，缺 `.pub` 会在追加后失败。`--command-ssh-no-copy-key` 只关远端复制，不阻止本地追加，整体非幂等。
 
 ### Docker
 
-覆盖受管 APT key／source，安装 Docker 工具链／lazydocker，不创建或运行应用容器。`usermod -aG docker` 只影响新登录；运行容器目标前须重新登录，以无 `sudo` 访问 daemon。
+仅覆盖受管 APT key／source 并安装工具，不创建／运行应用容器。加 docker 组仅新登录生效；容器目标须重新登录后无 `sudo` 访问 daemon。
 
 ### Git
 
-仅拥有指定 global keys（name／email 非空才写）和全量 lazygit 配置，非整份 `.gitconfig`。delta／lazygit 归 Git 而非 modern CLI；`lg()`／一次性登录归 OMZ。lazygit 不继承 `core.pager=delta`；`lg()` 用 `LAZYGIT_NEW_DIR_FILE` 让父 shell 切到退出目录。
+只写指定 global keys（name／email 非空才写）及整份 lazygit 配置，不覆盖整份 `.gitconfig`。delta／lazygit 归 Git，`lg()`／一次性登录归 OMZ；lazygit 不继承 `core.pager=delta`。
 
 ### Claude Code 与 copilot-api
 
-Homebrew 安装／更新 Claude（不用 `claude update`），APT 供 sandbox／JSON／socket 依赖。流程：**静态设置 → Ghostty 通知 → copilot-api gateway／插件 → 通用插件**；条件步骤仅在集成启用时执行，保留两组 `enabledPlugins`。语言插件须与对应语言服务器成对启用，并依赖前序语言组件；Git 插件须 `APP_GIT=1`。
+Claude 由 Homebrew 安装／更新（不调 `claude update`），APT 供运行依赖。`debian/app/claude/main.sh` 顺序：**覆盖 settings → 条件 Ghostty 通知 → 条件 copilot-api gateway／插件 → 通用插件**，保留两组 `enabledPlugins`。语言插件与对应语言服务器成对启用，并依赖前序语言组件；Git 插件须 `APP_GIT=1`。
 
-`install_settings()` 以目录 700／文件 600 覆盖设置；`main.sh` 仅 `APP_GHOSTTY=1` 设 `preferredNotifChannel=ghostty`，`copilot_api.sh` 合并 `ANTHROPIC_*`。基线无通知键；重装丢自定义 JSON，关 Ghostty 后重装去该键，不单独卸载。
+settings 全量覆盖（目录 700／文件 600），重装丢自定义；通知键仅 Ghostty 开时添加，关后重装去键，不单独卸载。`copilot_api.sh` 合并 `ANTHROPIC_*`。
 
-首次交互前加官方 marketplace；随后 `jq` 仅删 `extraKnownMarketplaces["claude-plugins-official"]`，父对象仅为空才删，保留 `enabledPlugins`、其他 marketplace、独立 registry。未经 scope／缓存／已装插件影响审查，不改用 marketplace 生命周期命令。
+首次交互前加官方 marketplace，再用 `jq` 仅删 settings 的 `extraKnownMarketplaces["claude-plugins-official"]`（空父对象才删）；保留 `enabledPlugins`、其他 marketplace／独立 registry。未经 scope／缓存／已装插件影响审查，不换生命周期命令。
 
-`copilot_api.sh` 原样写三模型，无 `/v1/models`／可用性验证；默认模型空、URL=`http://localhost:4141`、token=`dummy`（刻意非机密）。`[1m]` 须 model、provider、账户、gateway 实际支持 1M；非第一方 `ANTHROPIC_BASE_URL` 默认预加载 fallback，仅 gateway 转发 `tool_reference` 才设 `ENABLE_TOOL_SEARCH=true`。copilot marketplace 的 Node 由集成安装，非独立 Debian 组件。
+模型原样写入，不查 `/v1/models`／可用性；默认值见 `copilot_api.sh`（`dummy` 非机密）。`[1m]` 须 model／provider／账户／gateway 实际支持 1M。非第一方 `ANTHROPIC_BASE_URL` 默认预加载 fallback，仅 gateway 转发 `tool_reference` 时可设 `ENABLE_TOOL_SEARCH=true`。copilot marketplace 的 Node 由集成安装，非独立 Debian 组件。
 
 ## 容器流程与安全边界
 
 ### dev-container
 
-launcher 将 Debian 参数按 NUL 分隔后 base64 编码为 `setup_args_b64`；Dockerfile 只读 bind mount `debian/`，用 `mapfile -d ''` 恢复数组并执行 `bash /mnt/setup/main.sh --unattended "${setup_args[@]}"`。镜像不得依赖树外文件，须显式补齐基线包（含 `python3`、`man-db`、`file`）；系统 Python 不依赖可选 uv／py-spy。
+传参与构建见 `container/dev-container/`：Debian 参数以 NUL＋base64 传递，还原数组后加 `--unattended` 执行。仅只读挂载 `debian/`，不得依赖树外文件；镜像显式提供基线包，不靠可选 uv／py-spy 提供系统 Python，清单见 Dockerfile。
 
-Ghostty 预检不启用 Debian 集成：须显式传 `--app-ghostty`，SSH 还须 `--command-ssh`。容器内默认 `http://localhost:4141` 指 dev-container 自身；访问宿主／独立 gateway 须转发 `--app-claude-base-url <容器可达的 URL>`，launcher 不设 host networking／宿主别名。
+Ghostty 预检不启用集成，开关仍须显式传入；不验证 SSH／login shell。默认 `localhost:4141` 指容器自身，gateway 须用 `--app-claude-base-url` 传容器可达的 URL；无 host networking／宿主别名。
 
-预检只认 `TERM_PROGRAM=ghostty` 及 `USER`、`LANG`、`TERM`、`COLORTERM`、`TERM_PROGRAM_VERSION` 非空，不验证 SSH／login shell。`infocmp -x "$TERM"` 导出 terminfo；基础 APT 后、setup 前写终端 ENV，并由容器用户用 `tic -x` 编译到 `/home/${user}/.terminfo`，终端参数变化不影响基础 APT 缓存，但影响后续 setup 缓存。
+宿主假定 Linux/systemd／`timedatectl`；预检仅认 `TERM_PROGRAM=ghostty` 和变量非空。`LANG` 实需 `<locale>.<encoding>`，扩平台／支持 `LANG=C` 须同步改预检、拆分、`localedef`。terminfo 由容器用户编译；终端 ENV 在基础 APT 后、setup 前，不影响基础 APT 缓存。
 
-宿主假定 Linux/systemd／`timedatectl`；`LANG` 实需 `<locale>.<encoding>`，但只检查非空，支持 macOS／`LANG=C` 须连同预检、拆分、`localedef` 修改。OMZ 无人值守安装不启动但改登录 shell；预期用 `docker exec` 进交互式 Zsh，非交互命令不保证 Homebrew PATH。同名容器已存在即拒绝启动。
+OMZ 无人值守仅改登录 shell、不启动；预期 `docker exec` 进交互 Zsh，非交互不保证 Homebrew PATH。同名容器拒绝启动。
 
-**编码不保密：** `setup_args_b64`／`terminfo_b64` 不是秘密通道，前者禁止传 `--app-claude-auth-token` 或其他凭据（操作约束，非自动拦截）。引入 Docker secret／运行时注入前不得扩展此通道；build ARG 会进入镜像，并可能写入设置。宿主直接传 token 也可能暴露于 history／argv，0600 仅限制明文文件落盘后的访问。
+**编码不保密：** `setup_args_b64`／`terminfo_b64` 非秘密通道；禁止经前者传 `--app-claude-auth-token` 或其他凭据（未自动拦截）。引入 Docker secret／运行时注入前不得扩展此通道；build ARG 会进入镜像且可能写入设置，宿主 argv／history 也可泄露，0600 只限制落盘后的访问。
 
-新容器用 `--privileged`、`unless-stopped`、`NOPASSWD:ALL`，可写挂宿主 `~/Projects`，与宿主同一信任边界；数值 UID/GID 未对齐，bind mount 可能产生所有权差异。
+容器用 `--privileged`／`unless-stopped`／`NOPASSWD:ALL`，可写挂载宿主 `~/Projects`，与宿主同信任边界；未对齐数值 UID/GID，可能产生所有权差异。
 
 ### copilot-api 服务
 
-`container/copilot-api/main.sh` 从最新 release 取 ref／镜像标签，构建后可通过 `/dev/tty` 认证，再替换固定名服务、挂载 `~/.copilot-api`。认证以 `root:root`／0700 创建状态目录，服务及配置容器各映到 root 状态路径。
+部署／认证见 `container/copilot-api/main.sh`。服务及配置容器共享宿主 `~/.copilot-api`，各映到 root 状态路径；认证以 `root:root`／0700 建目录。
 
-`-p 4141:4141` 通常在全部宿主地址发布 TCP 4141，非仅回环；daemon 默认绑定／上游监听未固定，仓库无 TLS／ACL。仅允许可信网络，或加 API key、防火墙／可信代理。删除旧容器前失败保留原服务；删除后 `docker run` 失败无回滚／health check，服务停止。
+`-p 4141:4141` 通常发布到全部宿主地址，非仅回环；daemon 默认绑定／上游监听未固定，无 TLS／ACL。仅限可信网络，或加 API key、防火墙／可信代理。删除旧容器前失败保留原服务；删除后启动失败无回滚／health check，服务停止。
 
 ### copilot-api-config
 
-一次性镜像修改同一宿主目录的有效 `config.json`；`run.sh` 先调用 `api_key.sh` 执行清空 → 随机追加 → 固定追加，成功后再调用 `model_mapping.sh`，与参数顺序无关。`--clear-api-keys` 清空数组，`--generate-api-keys <N>` 加 N 个独立 32 字节十六进制 key，`--add-api-key <v>` 原样追加到达 parser 的非空值；兼容 alias 见其 `main.sh`。模型映射的 key／value 均非空时按键写入 `modelMappings`，同键覆盖，保留其他映射及配置，不校验模型。
+一次性容器修改共享目录的有效 `config.json`，实现见 `container/copilot-api-config/`。固定顺序：API key 清空 → 随机追加 → 固定追加 → 模型映射；前步失败中止，已写入不回滚。映射仅 key／value 均非空时按键覆盖，保留其他配置、不验模型。
 
-值参数重复取末值，模型映射取最后一组完整值；API key 追加不去重，仍受祖先标志碰撞限制。`<N>` 未验格式／上限即进入 Bash 算术，只能由可信调用方传规范非负十进制值。固定 key 经宿主 argv／Docker 环境变量，可暴露于 history、进程参数及 Docker metadata，不是秘密注入通道。
+重复值取末值，模型映射取最后一组完整值；API key 不去重。`<N>` 未验格式／上限即进入 Bash 算术，只限可信调用方的规范非负十进制。固定 key 经宿主 argv／Docker 环境变量，可暴露于 history、进程及 metadata，不是秘密通道。
 
 ## macOS 特有约束与变更门禁
 
-macOS 无 Debian 专属 PATH、Atuin、fzf 或一次性登录片段；`APP_VSCODE=1` 直接选 `code -w`。检查块四组 `cmp` 制品须逐字节一致；Docker 上下文仅 `debian/`，不得移至根目录共享。
+macOS 不带 Debian 专属 PATH／Atuin／fzf／一次性登录片段；`APP_VSCODE=1` 直接选 `code -w`。
 
-`macos/main.sh` 固定求值 `/opt/homebrew/bin/brew shellenv` 供安装子进程使用，交互发现归 OMZ `brew`。路径缺失时内层报错，外层 `eval` 仍可成功；泛化前缀或改失败传播须同步更新并验证。
+`macos/main.sh` 固定求值 `/opt/homebrew/bin/brew shellenv` 供子进程使用，交互 PATH 归 OMZ `brew`；缺路径时内层报错，外层 `eval` 仍可成功。泛化前缀／改失败传播须同步验证。
 
-完成前同步适用接口视图，复核所有权、加载顺序、重跑及组件／容器例外；按“检查与安全验证”及实际安装版完成适用验证，明确记录无法完成的目标平台测试。
+完成前按上述契约同步接口、运行适用检查；列明未完成的安装版／目标平台验证。
