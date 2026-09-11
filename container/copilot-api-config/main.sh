@@ -5,6 +5,8 @@ set -euo pipefail
 CLEAR_API_KEYS="${CLEAR_API_KEYS:-0}"
 API_KEY_GENERATION_COUNT="${API_KEY_GENERATION_COUNT:-0}"
 API_KEY_TO_ADD="${API_KEY_TO_ADD:-}"
+MODEL_MAPPING_KEY="${MODEL_MAPPING_KEY:-}"
+MODEL_MAPPING_VALUE="${MODEL_MAPPING_VALUE:-}"
 
 parse_args() {
     POSITIONAL=()
@@ -32,6 +34,16 @@ parse_args() {
                     shift $((numOfArgs + 1)) # shift 'numOfArgs + 1' to bypass switch and its value
                 fi
                 ;;
+            --model-mapping)
+                numOfArgs=2 # 参数值数量
+                if (($# < numOfArgs + 1)); then
+                    shift $#
+                else
+                    MODEL_MAPPING_KEY="$2"
+                    MODEL_MAPPING_VALUE="$3"
+                    shift $((numOfArgs + 1)) # 跳过参数名及其值
+                fi
+                ;;
             *) # unknown flag/switch
                 POSITIONAL+=("$1")
                 shift
@@ -56,6 +68,8 @@ main() {
         -e "CLEAR_API_KEYS=$CLEAR_API_KEYS" \
         -e "API_KEY_GENERATION_COUNT=$API_KEY_GENERATION_COUNT" \
         -e "API_KEY_TO_ADD=$API_KEY_TO_ADD" \
+        -e "MODEL_MAPPING_KEY=$MODEL_MAPPING_KEY" \
+        -e "MODEL_MAPPING_VALUE=$MODEL_MAPPING_VALUE" \
         -v "$HOME/.copilot-api:/root/.copilot-api" \
         'copilot-api-config'
 }
