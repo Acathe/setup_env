@@ -78,3 +78,4 @@ curl -fsSL https://raw.githubusercontent.com/acathe/setup-env/master/main.sh \
 |                              | `--generate-api-keys <N>`      |
 |                              | `--add-api-key <v>`            |
 |                              | `--model-mapping <key> <value>` |
+|                              | `--small-model <model>`        |

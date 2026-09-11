@@ -5,6 +5,7 @@ set -euo pipefail
 main() {
     bash './api_key.sh' "$@"
     bash './model_mapping.sh' "$@"
+    bash './small_model.sh' "$@"
 }
 
 if [[ $0 == "${BASH_SOURCE[0]}" ]]; then
