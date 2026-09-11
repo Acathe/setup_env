@@ -215,9 +215,9 @@ Ghostty 预检不启用 Debian 集成：须显式传 `--app-ghostty`，SSH 还�
 
 ### copilot-api-config
 
-一次性镜像修改同一宿主目录的有效 `config.json`；操作固定为清空 → 随机追加 → 固定追加，与参数顺序无关。`--clear-api-keys` 清空数组，`--generate-api-keys <N>` 加 N 个独立 32 字节十六进制 key，`--add-api-key <v>` 原样追加到达 parser 的非空值；兼容 alias 见其 `main.sh`。
+一次性镜像修改同一宿主目录的有效 `config.json`；`run.sh` 先调用 `api_key.sh` 执行清空 → 随机追加 → 固定追加，成功后再调用 `model_mapping.sh`，与参数顺序无关。`--clear-api-keys` 清空数组，`--generate-api-keys <N>` 加 N 个独立 32 字节十六进制 key，`--add-api-key <v>` 原样追加到达 parser 的非空值；兼容 alias 见其 `main.sh`。模型映射的 key／value 均非空时按键写入 `modelMappings`，同键覆盖，保留其他映射及配置，不校验模型。
 
-值参数重复取末值、追加不去重，仍受祖先标志碰撞限制。`<N>` 未验格式／上限即进入 Bash 算术，只能由可信调用方传规范非负十进制值。固定 key 经宿主 argv／Docker 环境变量，可暴露于 history、进程参数及 Docker metadata，不是秘密注入通道。
+值参数重复取末值，模型映射取最后一组完整值；API key 追加不去重，仍受祖先标志碰撞限制。`<N>` 未验格式／上限即进入 Bash 算术，只能由可信调用方传规范非负十进制值。固定 key 经宿主 argv／Docker 环境变量，可暴露于 history、进程参数及 Docker metadata，不是秘密注入通道。
 
 ## macOS 特有约束与变更门禁
 

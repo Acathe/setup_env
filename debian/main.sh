@@ -16,7 +16,6 @@ export APP_CLAUDE="${APP_CLAUDE:-0}"
 export APP_DOCKER="${APP_DOCKER:-0}"
 export APP_GHOSTTY="${APP_GHOSTTY:-0}"
 export APP_GIT="${APP_GIT:-0}"
-export APP_NEOVIM="${APP_NEOVIM:-0}"
 export APP_TMUX="${APP_TMUX:-0}"
 export APP_VSCODE="${APP_VSCODE:-0}"
 export APP_YAZI="${APP_YAZI:-0}"
@@ -73,10 +72,6 @@ parse_args() {
                 APP_GIT=1
                 shift
                 ;;
-            --app-neovim)
-                APP_NEOVIM=1
-                shift
-                ;;
             --app-tmux)
                 APP_TMUX=1
                 shift
@@ -118,7 +113,6 @@ main() {
     [[ $APP_CLAUDE == '1' ]] && bash './app/claude/main.sh' "$@"
     [[ $APP_DOCKER == '1' ]] && bash './app/docker.sh' "$@"
     [[ $APP_GIT == '1' ]] && bash './app/git/main.sh' "$@"
-    [[ $APP_NEOVIM == '1' ]] && bash './app/neovim.sh' "$@"
     [[ $APP_TMUX == '1' ]] && bash './app/tmux/main.sh' "$@"
     [[ $APP_YAZI == '1' ]] && bash './app/yazi/main.sh' "$@"
 

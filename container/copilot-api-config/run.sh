@@ -3,7 +3,8 @@
 set -euo pipefail
 
 main() {
-    brew install -q 'neovim'
+    bash './api_key.sh' "$@"
+    bash './model_mapping.sh' "$@"
 }
 
 if [[ $0 == "${BASH_SOURCE[0]}" ]]; then
