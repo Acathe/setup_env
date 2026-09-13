@@ -44,8 +44,10 @@ get_compose_file() {
 }
 
 add_api_key() {
+    local api_key="$1"
+
     docker compose -f '/tmp/copilot-api/docker-compose.yaml' \
-        run --rm 'copilot-api' --auth keys --add "$COPILOT_API_KEY"
+        run --rm 'copilot-api' --auth keys --add "$api_key"
 }
 
 auth() {
@@ -70,7 +72,7 @@ main() {
     get_compose_file
 
     if [[ -n $COPILOT_API_KEY ]]; then
-        add_api_key
+        add_api_key "$COPILOT_API_KEY"
     fi
 
     if [[ $COPILOT_API_AUTH == '1' ]]; then
