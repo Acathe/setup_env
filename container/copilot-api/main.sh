@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-COPILOT_API_KEY="${COPILOT_API_KEY:-}"
+COPILOT_API_ADD_API_KEY="${COPILOT_API_ADD_API_KEY:-}"
 COPILOT_API_AUTH="${COPILOT_API_AUTH:-0}"
 COPILOT_API_ADD_UPDATE_CONFIG="${COPILOT_API_ADD_UPDATE_CONFIG:-0}"
 
@@ -17,7 +17,7 @@ parse_args() {
                 if (($# < numOfArgs + 1)); then
                     shift $#
                 else
-                    COPILOT_API_KEY="$2"
+                    COPILOT_API_ADD_API_KEY="$2"
                     shift $((numOfArgs + 1)) # 跳过参数名及其值
                 fi
                 ;;
@@ -71,8 +71,8 @@ main() {
 
     get_compose_file
 
-    if [[ -n $COPILOT_API_KEY ]]; then
-        add_api_key "$COPILOT_API_KEY"
+    if [[ -n $COPILOT_API_ADD_API_KEY ]]; then
+        add_api_key "$COPILOT_API_ADD_API_KEY"
     fi
 
     if [[ $COPILOT_API_AUTH == '1' ]]; then
