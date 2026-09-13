@@ -201,7 +201,7 @@ OMZ 无人值守仅改登录 shell、不启动；预期 `docker exec` 进交互 
 
 入口每次执行都创建数据目录并设 `COPILOT_API_DATA_DIR`，使服务及配置容器继续共享宿主 `~/.copilot-data`，数据不落在 `/tmp`。服务／认证映到 `/data`，上游以 root `data-init` 初始化／修复受管状态权限，再以非 root `bun` 运行；仓库不额外实现旧环境迁移。上游 `XDG_CACHE_HOME=/data/cache` 持久化 device ID。配置容器仍以 root 映到 `/root/.copilot-data`，原位写入已有配置、保留所有者及权限。
 
-添加 key、登录及 updater 安装默认关闭，启动服务无开关；入口先创建数据目录并下载 Compose，再按 可选添加非空 key → 可选登录 → 启动 → 可选安装 updater 执行。不显式执行 `docker compose pull`，镜像拉取由各 Compose 命令按上游 YAML 策略处理，不保证组合调用只拉取一次。updater 安装独立选择，仅整文件部署片段、不安装聚合插件本体。无参数／仅 updater 也会准备服务工作及数据目录、下载 Compose 并启动服务。
+清配置、添加 key、登录及 updater 安装默认关闭，启动服务无开关；入口先创建数据目录并下载 Compose，再按 可选清配置 → 可选添加非空 key → 可选登录 → 启动 → 可选安装 updater 执行。`--clear-config`／`COPILOT_API_CLAER_CONFIG=1` 仅删除 `$COPILOT_API_DATA_DIR/config.json`，不存在时不报错，不清理其他数据；已删除配置不回滚。不显式执行 `docker compose pull`，镜像拉取由各 Compose 命令按上游 YAML 策略处理，不保证组合调用只拉取一次。updater 安装独立选择，仅整文件部署片段、不安装聚合插件本体。无参数／仅 updater 也会准备服务工作及数据目录、下载 Compose 并启动服务。
 
 不手动删除容器。下载失败可能留下不完整 YAML，任一步失败均中断后续步骤；拉取／密钥添加／登录失败不启动服务，`up -d` 可能部分完成，无回滚、不等待健康状态。只读配置、健康检查、日志轮转及拉取策略均归上游 YAML。
 
