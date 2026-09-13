@@ -201,9 +201,9 @@ OMZ 无人值守仅改登录 shell、不启动；预期 `docker exec` 进交互 
 
 入口设 `COPILOT_API_DATA_DIR`，使服务及配置容器继续共享宿主 `~/.copilot-data`，数据不落在 `/tmp`。服务／认证映到 `/data`，上游以 root `data-init` 初始化／修复受管状态权限，再以非 root `bun` 运行；仓库不额外实现旧环境迁移。上游 `XDG_CACHE_HOME=/data/cache` 持久化 device ID。配置容器仍以 root 映到 `/root/.copilot-data`，原位写入已有配置、保留所有者及权限。
 
-流程为 Compose 拉取 → 可选 `--auth login` → 启动 → 安装 updater，不手动删除容器。下载失败可能留下不完整 YAML，但后续步骤中断；拉取／认证失败不启动服务，`up -d` 可能部分完成，无回滚、不等待健康状态。只读配置、健康检查、日志轮转及拉取策略均归上游 YAML。
+流程为 Compose 拉取 → 可选认证（先 `--auth keys --add`，再 `--auth login`）→ 启动 → 安装 updater，不手动删除容器。下载失败可能留下不完整 YAML，但后续步骤中断；拉取／密钥添加／登录失败不启动服务，`up -d` 可能部分完成，无回滚、不等待健康状态。只读配置、健康检查、日志轮转及拉取策略均归上游 YAML。
 
-上游默认监听宿主 `127.0.0.1:4141`，可用 `COPILOT_API_BIND`／`COPILOT_API_PORT` 覆盖；其他容器／远端访问须显式设置可达地址，并配 API key、防火墙／可信代理。继承上游的 token／代理环境变量透传，Docker metadata 可见，不是秘密通道。
+上游默认监听宿主 `127.0.0.1:4141`，可用 `COPILOT_API_BIND`／`COPILOT_API_PORT` 覆盖；其他容器／远端访问须显式设置可达地址，并配 API key、防火墙／可信代理。认证参数中的 API key 经宿主 argv／容器命令参数，可暴露于 history、进程及 Docker metadata，不是秘密通道。继承上游的 token／代理环境变量透传，Docker metadata 可见，不是秘密通道。
 
 ### copilot-api-config
 
