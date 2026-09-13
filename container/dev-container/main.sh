@@ -46,8 +46,8 @@ main() {
         return 1
     fi
 
-    if ! command -v docker > /dev/null 2>&1 || ! command -v infocmp > /dev/null 2>&1; then
-        echo 'docker or infocmp is not installed.' >&2
+    if ! command -v infocmp > /dev/null 2>&1; then
+        echo 'infocmp is not installed.' >&2
         return 1
     fi
 

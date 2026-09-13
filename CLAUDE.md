@@ -197,9 +197,13 @@ OMZ 无人值守仅改登录 shell、不启动；预期 `docker exec` 进交互 
 
 ### copilot-api 服务
 
-部署／认证见 `container/copilot-api/main.sh`。服务及配置容器共享宿主 `~/.copilot-api`，各映到 root 状态路径；认证以 `root:root`／0700 建目录。
+部署／认证见 `container/copilot-api/main.sh`。每次将上游 `dev` 的原始 Compose 文件全量下载覆盖到 `/tmp/copilot-api/docker-compose.yaml`，不本地构建、不清理目录。未被环境变量／YAML 顶层 `name` 覆盖时，项目名由目录得 `copilot-api`；固定目录和项目不隔离并发调用。
 
-`-p 4141:4141` 通常发布到全部宿主地址，非仅回环；daemon 默认绑定／上游监听未固定，无 TLS／ACL。仅限可信网络，或加 API key、防火墙／可信代理。删除旧容器前失败保留原服务；删除后启动失败无回滚／health check，服务停止。
+入口设 `COPILOT_API_DATA_DIR`，使服务及配置容器继续共享宿主 `~/.copilot-data`，数据不落在 `/tmp`。服务／认证映到 `/data`，上游以 root `data-init` 初始化／修复受管状态权限，再以非 root `bun` 运行；仓库不额外实现旧环境迁移。上游 `XDG_CACHE_HOME=/data/cache` 持久化 device ID。配置容器仍以 root 映到 `/root/.copilot-data`，原位写入已有配置、保留所有者及权限。
+
+流程为 Compose 拉取 → 可选 `--auth login` → 启动 → 安装 updater，不手动删除容器。下载失败可能留下不完整 YAML，但后续步骤中断；拉取／认证失败不启动服务，`up -d` 可能部分完成，无回滚、不等待健康状态。只读配置、健康检查、日志轮转及拉取策略均归上游 YAML。
+
+上游默认监听宿主 `127.0.0.1:4141`，可用 `COPILOT_API_BIND`／`COPILOT_API_PORT` 覆盖；其他容器／远端访问须显式设置可达地址，并配 API key、防火墙／可信代理。继承上游的 token／代理环境变量透传，Docker metadata 可见，不是秘密通道。
 
 ### copilot-api-config
 

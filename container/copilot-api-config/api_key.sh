@@ -11,8 +11,8 @@ clear_api_keys() {
     tmp="$(mktemp)"
 
     jq '.auth.apiKeys = []' \
-        "$HOME/.copilot-api/config.json" > "$tmp"
-    cp "$tmp" "$HOME/.copilot-api/config.json"
+        "$HOME/.copilot-data/config.json" > "$tmp"
+    cp "$tmp" "$HOME/.copilot-data/config.json"
 }
 
 add_api_key() {
@@ -22,8 +22,8 @@ add_api_key() {
 
     jq --arg api_key "$api_key" \
         '.auth.apiKeys += [$api_key]' \
-        "$HOME/.copilot-api/config.json" > "$tmp"
-    cp "$tmp" "$HOME/.copilot-api/config.json"
+        "$HOME/.copilot-data/config.json" > "$tmp"
+    cp "$tmp" "$HOME/.copilot-data/config.json"
 }
 
 main() {
