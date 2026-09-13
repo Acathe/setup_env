@@ -12,8 +12,8 @@ set_model_mapping() {
 
     jq --arg key "$key" --arg value "$value" \
         '.modelMappings[$key] = $value' \
-        "$HOME/.copilot-api/config.json" > "$tmp"
-    cp "$tmp" "$HOME/.copilot-api/config.json"
+        "$HOME/.copilot-data/config.json" > "$tmp"
+    cp "$tmp" "$HOME/.copilot-data/config.json"
 }
 
 main() {

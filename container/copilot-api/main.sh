@@ -2,18 +2,39 @@
 
 set -euo pipefail
 
+COPILOT_API_CLAER_CONFIG="${COPILOT_API_CLAER_CONFIG:-0}"
+COPILOT_API_ADD_API_KEY="${COPILOT_API_ADD_API_KEY:-}"
 COPILOT_API_AUTH="${COPILOT_API_AUTH:-0}"
+COPILOT_API_ADD_UPDATE_CONFIG="${COPILOT_API_ADD_UPDATE_CONFIG:-0}"
+
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 
 parse_args() {
     POSITIONAL=()
     while (($# > 0)); do
         case "$1" in
-            --copilot-api-auth)
+            --clear-config)
+                COPILOT_API_CLAER_CONFIG=1
+                shift
+                ;;
+            --add-api-key)
+                numOfArgs=1 # 参数值数量
+                if (($# < numOfArgs + 1)); then
+                    shift $#
+                else
+                    COPILOT_API_ADD_API_KEY="$2"
+                    shift $((numOfArgs + 1)) # 跳过参数名及其值
+                fi
+                ;;
+            --auth)
                 COPILOT_API_AUTH=1
                 shift
                 ;;
-            *) # unknown flag/switch
+            --add-update-config)
+                COPILOT_API_ADD_UPDATE_CONFIG=1
+                shift
+                ;;
+            *) # 未识别参数
                 POSITIONAL+=("$1")
                 shift
                 ;;
@@ -21,81 +42,63 @@ parse_args() {
     done
 }
 
-get_copilot_api_latest() {
-    curl -fsSILo /dev/null -w '%{url_effective}' 'https://github.com/caozhiyuan/copilot-api/releases/latest' | sed -E 's#.*/tag/v?([^/]+)$#\1#'
+get_compose_file() {
+    mkdir -p '/tmp/copilot-api'
+    curl -fsSL 'https://raw.githubusercontent.com/caozhiyuan/copilot-api/dev/docker-compose.yaml' \
+        -o '/tmp/copilot-api/docker-compose.yaml'
 }
 
-build_image() {
-    local version="$1"
-    if [[ -z $version ]]; then
-        echo 'Version is required to build copilot-api image.' >&2
-        return 1
-    fi
+clear_config() {
+    rm -f "$COPILOT_API_DATA_DIR/config.json"
+}
 
-    docker build \
-        -qt "copilot-api:$version" \
-        "https://github.com/caozhiyuan/copilot-api.git#v$version" >&2
+add_api_key() {
+    local api_key="$1"
+
+    docker compose -f '/tmp/copilot-api/docker-compose.yaml' \
+        run --rm 'copilot-api' --auth keys --add "$api_key"
 }
 
 auth() {
-    local image="$1"
-    if [[ -z $image ]]; then
-        echo 'Image is required to auth copilot-api.' >&2
-        return 1
-    fi
-
-    sudo install -dm 700 -o root -g root "$HOME/.copilot-api"
-    docker run \
-        -qit \
-        --rm \
-        -v "$HOME/.copilot-api:/root/.local/share/copilot-api" \
-        "$image" \
-        --auth < /dev/tty
+    docker compose -f '/tmp/copilot-api/docker-compose.yaml' \
+        run --rm 'copilot-api' --auth login < /dev/tty
 }
 
-run_container() {
-    local image="$1"
-    if [[ -z $image ]]; then
-        echo 'Image is required to run copilot-api container.' >&2
-        return 1
-    fi
-
-    if docker container inspect 'copilot-api' > /dev/null 2>&1; then
-        docker rm -f 'copilot-api'
-    fi
-
-    docker run \
-        -qd \
-        --name 'copilot-api' \
-        --restart unless-stopped \
-        -p 4141:4141 \
-        -v "$HOME/.copilot-api:/root/.local/share/copilot-api" \
-        "$image"
+run() {
+    export COPILOT_API_BIND='0.0.0.0'
+    docker compose -f '/tmp/copilot-api/docker-compose.yaml' up -d
 }
 
 install_update() {
-    mkdir -p "$ZSH_CUSTOM/plugins/update-all-in-one/custom"
-    install -m 644 './98-copilot-api.zsh' \
+    install -Dm 644 './98-copilot-api.zsh' \
         "$ZSH_CUSTOM/plugins/update-all-in-one/custom/98-copilot-api.zsh"
 }
 
 main() {
-    if ! command -v docker > /dev/null 2>&1; then
-        echo 'docker and curl are required to deploy copilot-api.' >&2
-        return 1
+    mkdir -p "$HOME/.copilot-data"
+    export COPILOT_API_DATA_DIR="$HOME/.copilot-data"
+
+    get_compose_file
+
+    if [[ $COPILOT_API_CLAER_CONFIG == '1' ]]; then
+        clear_config
     fi
 
-    local version
-    version="$(get_copilot_api_latest)"
-
-    build_image "$version"
+    if [[ -n $COPILOT_API_ADD_API_KEY ]]; then
+        add_api_key "$COPILOT_API_ADD_API_KEY"
+    fi
 
     if [[ $COPILOT_API_AUTH == '1' ]]; then
-        auth "copilot-api:$version"
+        auth
     fi
 
-    run_container "copilot-api:$version"
-    install_update
+    run
+
+    if [[ $COPILOT_API_ADD_UPDATE_CONFIG == '1' ]]; then
+        install_update
+    fi
+
+    return 0
 }
 
 if [[ $0 == "${BASH_SOURCE[0]}" ]]; then

@@ -63,11 +63,6 @@ parse_args() {
 }
 
 main() {
-    if ! command -v docker > /dev/null 2>&1; then
-        echo 'Docker is not installed.' >&2
-        return 1
-    fi
-
     docker build \
         -qt 'copilot-api-config' \
         '.'
@@ -81,7 +76,7 @@ main() {
         -e "MODEL_MAPPING_KEY=$MODEL_MAPPING_KEY" \
         -e "MODEL_MAPPING_VALUE=$MODEL_MAPPING_VALUE" \
         -e "SMALL_MODEL=$SMALL_MODEL" \
-        -v "$HOME/.copilot-api:/root/.copilot-api" \
+        -v "$HOME/.copilot-data:/root/.copilot-data" \
         'copilot-api-config'
 }
 

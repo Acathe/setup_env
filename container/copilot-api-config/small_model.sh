@@ -21,8 +21,8 @@ set_small_model() {
                 .
             end
         )' \
-        "$HOME/.copilot-api/config.json" > "$tmp"
-    cp "$tmp" "$HOME/.copilot-api/config.json"
+        "$HOME/.copilot-data/config.json" > "$tmp"
+    cp "$tmp" "$HOME/.copilot-data/config.json"
 }
 
 main() {

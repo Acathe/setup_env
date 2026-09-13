@@ -85,7 +85,7 @@ OMZ 改动还须一次性 `HOME`／`ZSH_CUSTOM`、受控 `PATH`：
 2. 导出全部组件变量（含 `APP_VSCODE`），在平台 `command/omz/` 按下节顺序运行四写入器，不运行 `main.sh`／`install_omz`。
 3. 断言唯一有序的 `plugins=(...)`、符合标志的 custom／plugin／updater basename 集合。
 4. 生成的 `.zshrc`、custom／updater、`pre-eza`、`brew-rustup` 均做 `zsh -n`；桩化 `gh`，验证 `99-gh-login.zsh` 先删自身、仅一次 `gh auth login`，禁真实认证。
-5. `zsh -f` 中桩化 `sudo`、`brew`、`tldr`、`uv`、`rustup`、`ya`、`omz` 测 updater；含 `98-copilot-api.zsh` 时加 `curl`／`bash` 桩。
+5. `zsh -f` 中桩化 `sudo`、`brew`、`tldr`、`uv`、`rustup`、`ya`、`omz` 测 updater；含 `98-copilot-api.zsh` 时加 `curl`／`bash` 桩，验证仅传 `--setup container --image copilot-api`，依赖默认启动，不启用可选操作。
 
 无 Homebrew／Starship 桩不得运行 `command/starship.sh`，不得直接调用真实 `update-all-in-one`。fzf 改动在一次性 `zsh -f` 检查 `${(z)FZF_CTRL_T_OPTS}`／`${(z)FZF_ALT_C_OPTS}`；插件顺序改动再做真实 ZLE／PTY，验证 Tab、`**<Tab>`、Ctrl-T、Alt-C 各调用一次且 `fzf_default_completion=fzf-tab-complete`。
 
@@ -93,7 +93,7 @@ macOS SSH 仅用一次性 HOME 和 `ssh-keygen`／`ssh-copy-id` 桩，覆盖首�
 
 ## 配置所有权、落点与重复运行
 
-安装／非 shell 配置归组件，shell 配置归 OMZ；仅 modern CLI 补全链接、服务启动后安装的 `98-copilot-api.zsh` 例外。`.zshrc` 多写入器协作，其余片段单一所有者。
+安装／非 shell 配置归组件，shell 配置归 OMZ；仅 modern CLI 补全链接、copilot-api 按开关安装的 `98-copilot-api.zsh` 例外。`.zshrc` 多写入器协作，其余片段单一所有者。
 
 OMZ 从模板建 `.zshrc`（Debian 另启用户 bin PATH），依次执行 `install_plugin.sh` → `update.sh` → `plugin.sh` → `custom.sh`；职责见两平台 `command/omz/`。`plugin.sh` 仅重建插件数组，条件插件须本次前置物化。
 
@@ -107,7 +107,7 @@ Debian Python 项目运行时归 uv，系统 `python3` 为基线；不另装 Hom
 
 Debian 仅 `APP_GIT=1` 装 `99-gh-login.zsh`（最后一个受管 custom）；source 先自删再 `gh auth login`，失败／取消不重试。`custom.sh` 重跑可重装，关标志后的残留仍可触发。
 
-`update.sh` 先于可选安装，按基线／Debian 标志部署，不探测命令；失败可留未满足的命令引用。聚合插件 source 只定义函数，调用才按字典序 source 片段；多步用 `&&`，运行器不查逐项返回值，后续成功可掩盖失败。`98-copilot-api.zsh` 从 `master` 调根入口，在末尾 `99-oh-my-zsh.zsh` 前。
+`update.sh` 先于可选安装，按基线／Debian 标志部署，不探测命令；失败可留未满足的命令引用。聚合插件 source 只定义函数，调用才按字典序 source 片段；多步用 `&&`，运行器不查逐项返回值，后续成功可掩盖失败。`98-copilot-api.zsh` 从 `master` 调根入口选择 copilot-api，依赖默认启动，下载 Compose 并启动服务、不重装自身，在末尾 `99-oh-my-zsh.zsh` 前。
 
 APT／Homebrew 各更新自身工具，其他 updater 见 `debian/command/omz/plugins/update-all-in-one/custom/`。Go 无专用 updater，不扫描 Go bin／更新 `gopls`。`ohmyzsh-full-autoupdate` 仅初始化时更新带实体 `.git` 的 custom 插件／主题；聚合更新不重复扫描、不调私有实现／改 `.zsh-update`，仅共享 `omz update`。
 
@@ -197,9 +197,15 @@ OMZ 无人值守仅改登录 shell、不启动；预期 `docker exec` 进交互 
 
 ### copilot-api 服务
 
-部署／认证见 `container/copilot-api/main.sh`。服务及配置容器共享宿主 `~/.copilot-api`，各映到 root 状态路径；认证以 `root:root`／0700 建目录。
+部署／认证见 `container/copilot-api/main.sh`。每次执行入口时，将上游 `dev` 的原始 Compose 文件全量下载覆盖到 `/tmp/copilot-api/docker-compose.yaml`，不本地构建、不清理目录。Compose 步骤通过 `-f` 指定该绝对路径，不切换工作目录。未被环境变量／YAML 顶层 `name` 覆盖时，项目名由 Compose 文件所在目录得 `copilot-api`；固定目录和项目不隔离并发调用。
 
-`-p 4141:4141` 通常发布到全部宿主地址，非仅回环；daemon 默认绑定／上游监听未固定，无 TLS／ACL。仅限可信网络，或加 API key、防火墙／可信代理。删除旧容器前失败保留原服务；删除后启动失败无回滚／health check，服务停止。
+入口每次执行都创建数据目录并设 `COPILOT_API_DATA_DIR`，使服务及配置容器继续共享宿主 `~/.copilot-data`，数据不落在 `/tmp`。服务／认证映到 `/data`，上游以 root `data-init` 初始化／修复受管状态权限，再以非 root `bun` 运行；仓库不额外实现旧环境迁移。上游 `XDG_CACHE_HOME=/data/cache` 持久化 device ID。配置容器仍以 root 映到 `/root/.copilot-data`，原位写入已有配置、保留所有者及权限。
+
+清配置、添加 key、登录及 updater 安装默认关闭，启动服务无开关；入口先创建数据目录并下载 Compose，再按 可选清配置 → 可选添加非空 key → 可选登录 → 启动 → 可选安装 updater 执行。`--clear-config`／`COPILOT_API_CLAER_CONFIG=1` 仅删除 `$COPILOT_API_DATA_DIR/config.json`，不存在时不报错，不清理其他数据；已删除配置不回滚。不显式执行 `docker compose pull`，镜像拉取由各 Compose 命令按上游 YAML 策略处理，不保证组合调用只拉取一次。updater 安装独立选择，仅整文件部署片段、不安装聚合插件本体。无参数／仅 updater 也会准备服务工作及数据目录、下载 Compose 并启动服务。
+
+不手动删除容器。下载失败可能留下不完整 YAML，任一步失败均中断后续步骤；拉取／密钥添加／登录失败不启动服务，`up -d` 可能部分完成，无回滚、不等待健康状态。只读配置、健康检查、日志轮转及拉取策略均归上游 YAML。
+
+上游默认监听宿主 `127.0.0.1:4141`，但入口固定 `COPILOT_API_BIND=0.0.0.0` 且不接受同名环境覆盖，服务默认对宿主所有 IPv4 接口开放；`COPILOT_API_PORT` 可覆盖端口。须配 API key、防火墙／可信代理。添加的 API key 经宿主 argv／导出环境及容器命令参数，可暴露于 history、进程及 Docker metadata，不是秘密通道。继承上游的 token／代理环境变量透传，Docker metadata 可见，不是秘密通道。
 
 ### copilot-api-config
 
