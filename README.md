@@ -68,28 +68,17 @@ curl -fsSL https://raw.githubusercontent.com/acathe/setup-env/master/main.sh \
         [--flag]
 ```
 
-| main args                    | script args                    |
-| ---------------------------- | ------------------------------ |
-| `--image dev-container`       | `--container <v>`              |
-|                              | `--image-tag <v>`              |
-|                              | `(debian-flag)`                |
-| `--image copilot-api`         | `--update`                     |
-|                              | `--add-api-key <v>`            |
-|                              | `--auth`                       |
-|                              | `--run`                        |
-|                              | `--add-update-config`          |
-| `--image copilot-api-config`  | `--clear-api-keys`             |
-|                              | `--generate-api-keys <N>`      |
-|                              | `--add-api-key <v>`            |
+| main args                    | script args                     |
+| ---------------------------- | ------------------------------- |
+| `--image dev-container`      | `--container <v>`               |
+|                              | `--image-tag <v>`               |
+|                              | `(debian-flag)`                 |
+| `--image copilot-api`        | `--add-api-key <v>`             |
+|                              | `--auth`                        |
+|                              | `--run`                         |
+|                              | `--add-update-config`           |
+| `--image copilot-api-config` | `--clear-api-keys`              |
+|                              | `--generate-api-keys <N>`       |
+|                              | `--add-api-key <v>`             |
 |                              | `--model-mapping <key> <value>` |
-|                              | `--small-model <model>`        |
-
-`copilot-api` 默认不执行步骤。`--update` 仅下载 Compose 文件并拉取镜像，不启动服务；`--add-api-key`、`--auth`、`--run` 分别仅添加 API key、登录、启动服务，不再自动拉取，未指定 `--update` 时使用已有 Compose 文件；`--add-update-config` 仅安装 updater 配置。
-
-首次部署并安装更新配置：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/acathe/setup-env/master/main.sh \
-    | bash -s -- --setup container --image copilot-api \
-        --update --add-api-key '<api_key>' --auth --run --add-update-config
-```
+|                              | `--small-model <model>`         |

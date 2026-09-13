@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-COPILOT_API_UPDATE="${COPILOT_API_UPDATE:-0}"
 COPILOT_API_KEY="${COPILOT_API_KEY:-}"
 COPILOT_API_AUTH="${COPILOT_API_AUTH:-0}"
 COPILOT_API_RUN="${COPILOT_API_RUN:-0}"
@@ -14,10 +13,6 @@ parse_args() {
     POSITIONAL=()
     while (($# > 0)); do
         case "$1" in
-            --update)
-                COPILOT_API_UPDATE=1
-                shift
-                ;;
             --add-api-key)
                 numOfArgs=1 # 参数值数量
                 if (($# < numOfArgs + 1)); then
@@ -47,12 +42,10 @@ parse_args() {
     done
 }
 
-update() {
+get_compose_file() {
     mkdir -p '/tmp/copilot-api'
     curl -fsSL 'https://raw.githubusercontent.com/caozhiyuan/copilot-api/dev/docker-compose.yaml' \
         -o '/tmp/copilot-api/docker-compose.yaml'
-
-    docker compose -f '/tmp/copilot-api/docker-compose.yaml' pull -q
 }
 
 add_api_key() {
@@ -76,12 +69,10 @@ install_update() {
 }
 
 main() {
-    if [[ $COPILOT_API_UPDATE == '1' ]]; then
-        update
-    fi
-
     mkdir -p "$HOME/.copilot-data"
     export COPILOT_API_DATA_DIR="$HOME/.copilot-data"
+
+    get_compose_file
 
     if [[ -n $COPILOT_API_KEY ]]; then
         add_api_key
