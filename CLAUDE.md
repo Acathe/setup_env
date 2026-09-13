@@ -197,7 +197,7 @@ OMZ 无人值守仅改登录 shell、不启动；预期 `docker exec` 进交互 
 
 ### copilot-api 服务
 
-部署／认证见 `container/copilot-api/main.sh`。仅启用更新步骤时，将上游 `dev` 的原始 Compose 文件全量下载覆盖到 `/tmp/copilot-api/docker-compose.yaml`，不本地构建、不清理目录。Compose 步骤在子 shell 中进入该目录，不影响 updater 安装的工作目录。未被环境变量／YAML 顶层 `name` 覆盖时，项目名由目录得 `copilot-api`；固定目录和项目不隔离并发调用。
+部署／认证见 `container/copilot-api/main.sh`。仅启用更新步骤时，将上游 `dev` 的原始 Compose 文件全量下载覆盖到 `/tmp/copilot-api/docker-compose.yaml`，不本地构建、不清理目录。Compose 步骤通过 `-f` 指定该绝对路径，不切换工作目录。未被环境变量／YAML 顶层 `name` 覆盖时，项目名由 Compose 文件所在目录得 `copilot-api`；固定目录和项目不隔离并发调用。
 
 入口仅在选择添加 key／登录／启动时创建数据目录并设 `COPILOT_API_DATA_DIR`，使服务及配置容器继续共享宿主 `~/.copilot-data`，数据不落在 `/tmp`。服务／认证映到 `/data`，上游以 root `data-init` 初始化／修复受管状态权限，再以非 root `bun` 运行；仓库不额外实现旧环境迁移。上游 `XDG_CACHE_HOME=/data/cache` 持久化 device ID。配置容器仍以 root 映到 `/root/.copilot-data`，原位写入已有配置、保留所有者及权限。
 

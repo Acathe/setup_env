@@ -47,33 +47,28 @@ parse_args() {
     done
 }
 
-update() (
+update() {
     mkdir -p '/tmp/copilot-api'
-    cd '/tmp/copilot-api'
-
     curl -fsSL 'https://raw.githubusercontent.com/caozhiyuan/copilot-api/dev/docker-compose.yaml' \
-        -o './docker-compose.yaml'
+        -o '/tmp/copilot-api/docker-compose.yaml'
 
-    docker compose pull -q
-)
+    docker compose -f '/tmp/copilot-api/docker-compose.yaml' pull -q
+}
 
-add_api_key() (
-    cd '/tmp/copilot-api'
+add_api_key() {
+    docker compose -f '/tmp/copilot-api/docker-compose.yaml' \
+        run --rm 'copilot-api' --auth keys --add "$COPILOT_API_KEY"
+}
 
-    docker compose run --rm 'copilot-api' --auth keys --add "$COPILOT_API_KEY"
-)
+auth() {
+    docker compose -f '/tmp/copilot-api/docker-compose.yaml' \
+        run --rm 'copilot-api' --auth login < /dev/tty
+}
 
-auth() (
-    cd '/tmp/copilot-api'
-
-    docker compose run --rm 'copilot-api' --auth login < /dev/tty
-)
-
-run() (
-    cd '/tmp/copilot-api'
-
-    docker compose up -d
-)
+run() {
+    export COPILOT_API_BIND='0.0.0.0'
+    docker compose -f '/tmp/copilot-api/docker-compose.yaml' up -d
+}
 
 install_update() {
     install -Dm 644 './98-copilot-api.zsh' \
@@ -85,21 +80,21 @@ main() {
         update
     fi
 
-    if [[ -n $COPILOT_API_KEY || $COPILOT_API_AUTH == '1' || $COPILOT_API_RUN == '1' ]]; then
-        mkdir -p "$HOME/.copilot-data"
-        export COPILOT_API_DATA_DIR="$HOME/.copilot-data"
-        export COPILOT_API_BIND='0.0.0.0'
-    fi
+    mkdir -p "$HOME/.copilot-data"
+    export COPILOT_API_DATA_DIR="$HOME/.copilot-data"
 
     if [[ -n $COPILOT_API_KEY ]]; then
         add_api_key
     fi
+
     if [[ $COPILOT_API_AUTH == '1' ]]; then
         auth
     fi
+
     if [[ $COPILOT_API_RUN == '1' ]]; then
         run
     fi
+
     if [[ $COPILOT_API_ADD_UPDATE_CONFIG == '1' ]]; then
         install_update
     fi
