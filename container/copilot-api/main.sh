@@ -4,7 +4,6 @@ set -euo pipefail
 
 COPILOT_API_KEY="${COPILOT_API_KEY:-}"
 COPILOT_API_AUTH="${COPILOT_API_AUTH:-0}"
-COPILOT_API_RUN="${COPILOT_API_RUN:-0}"
 COPILOT_API_ADD_UPDATE_CONFIG="${COPILOT_API_ADD_UPDATE_CONFIG:-0}"
 
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
@@ -24,10 +23,6 @@ parse_args() {
                 ;;
             --auth)
                 COPILOT_API_AUTH=1
-                shift
-                ;;
-            --run)
-                COPILOT_API_RUN=1
                 shift
                 ;;
             --add-update-config)
@@ -82,9 +77,7 @@ main() {
         auth
     fi
 
-    if [[ $COPILOT_API_RUN == '1' ]]; then
-        run
-    fi
+    run
 
     if [[ $COPILOT_API_ADD_UPDATE_CONFIG == '1' ]]; then
         install_update
