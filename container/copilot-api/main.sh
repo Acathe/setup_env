@@ -2,25 +2,44 @@
 
 set -euo pipefail
 
+COPILOT_API_UPDATE="${COPILOT_API_UPDATE:-0}"
+COPILOT_API_KEY="${COPILOT_API_KEY:-}"
 COPILOT_API_AUTH="${COPILOT_API_AUTH:-0}"
-API_KEY="${API_KEY:-}"
+COPILOT_API_RUN="${COPILOT_API_RUN:-0}"
+COPILOT_API_ADD_UPDATE_CONFIG="${COPILOT_API_ADD_UPDATE_CONFIG:-0}"
+
 ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
 
 parse_args() {
     POSITIONAL=()
     while (($# > 0)); do
         case "$1" in
-            --copilot-api-auth)
+            --update)
+                COPILOT_API_UPDATE=1
+                shift
+                ;;
+            --add-api-key)
                 numOfArgs=1 # 参数值数量
                 if (($# < numOfArgs + 1)); then
                     shift $#
                 else
-                    COPILOT_API_AUTH=1
-                    API_KEY="$2"
+                    COPILOT_API_KEY="$2"
                     shift $((numOfArgs + 1)) # 跳过参数名及其值
                 fi
                 ;;
-            *) # unknown flag/switch
+            --auth)
+                COPILOT_API_AUTH=1
+                shift
+                ;;
+            --run)
+                COPILOT_API_RUN=1
+                shift
+                ;;
+            --add-update-config)
+                COPILOT_API_ADD_UPDATE_CONFIG=1
+                shift
+                ;;
+            *) # 未识别参数
                 POSITIONAL+=("$1")
                 shift
                 ;;
@@ -28,7 +47,7 @@ parse_args() {
     done
 }
 
-pull() {
+update() (
     mkdir -p '/tmp/copilot-api'
     cd '/tmp/copilot-api'
 
@@ -36,17 +55,22 @@ pull() {
         -o './docker-compose.yaml'
 
     docker compose pull -q
-}
+)
 
-deploy() (
-    mkdir -p "$HOME/.copilot-data"
-    export COPILOT_API_DATA_DIR="$HOME/.copilot-data"
-    export COPILOT_API_BIND="0.0.0.0"
+add_api_key() (
+    cd '/tmp/copilot-api'
 
-    if [[ $COPILOT_API_AUTH == '1' ]]; then
-        docker compose run --rm copilot-api --auth keys --add "$API_KEY"
-        docker compose run --rm 'copilot-api' --auth login < /dev/tty
-    fi
+    docker compose run --rm 'copilot-api' --auth keys --add "$COPILOT_API_KEY"
+)
+
+auth() (
+    cd '/tmp/copilot-api'
+
+    docker compose run --rm 'copilot-api' --auth login < /dev/tty
+)
+
+run() (
+    cd '/tmp/copilot-api'
 
     docker compose up -d
 )
@@ -57,9 +81,30 @@ install_update() {
 }
 
 main() {
-    pull
-    deploy
-    install_update
+    if [[ $COPILOT_API_UPDATE == '1' ]]; then
+        update
+    fi
+
+    if [[ -n $COPILOT_API_KEY || $COPILOT_API_AUTH == '1' || $COPILOT_API_RUN == '1' ]]; then
+        mkdir -p "$HOME/.copilot-data"
+        export COPILOT_API_DATA_DIR="$HOME/.copilot-data"
+        export COPILOT_API_BIND='0.0.0.0'
+    fi
+
+    if [[ -n $COPILOT_API_KEY ]]; then
+        add_api_key
+    fi
+    if [[ $COPILOT_API_AUTH == '1' ]]; then
+        auth
+    fi
+    if [[ $COPILOT_API_RUN == '1' ]]; then
+        run
+    fi
+    if [[ $COPILOT_API_ADD_UPDATE_CONFIG == '1' ]]; then
+        install_update
+    fi
+
+    return 0
 }
 
 if [[ $0 == "${BASH_SOURCE[0]}" ]]; then
